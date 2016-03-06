@@ -11,6 +11,7 @@
 #include <string>
 #include "BinaryFile.h"
 
+int const SIZEOFFREE = 1000;
 
 class DiskList
 {
@@ -25,6 +26,8 @@ private:
     BinaryFile m_file;
     BinaryFile::Offset m_head;
     int m_size;
+    BinaryFile::Offset freeBlock[SIZEOFFREE];
+    BinaryFile::Offset freeHead;
     
     struct DiskNode
     {
