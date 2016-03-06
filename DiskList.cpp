@@ -24,9 +24,12 @@ DiskList::DiskList(const string& filename)
     //constructor creates an empty list in a disk file of the specified name
     m_file.createNew(filename);
     m_head = 0; // indicate empty list
+    m_size = 0;
+    freeHead = 0; // no free space
     
     m_file.write(m_head, 0);
-    m_size = 0;
+    m_file.write(freeBlock, sizeof(m_head)); //store free space
+    
 }
 
 bool DiskList::push_front(const char *data)
@@ -36,8 +39,17 @@ bool DiskList::push_front(const char *data)
     }
     
     //added to the front of the list, return true
+    BinaryFile::Offset insertPosition;
+    if (freeHead==0) {
+        insertPosition = m_file.fileLength();
+    }
+    else{
+        m_file.read(insertPosition, 2*sizeof(m_head)+(freeHead-1)*sizeof(m_head));
+        freeHead -= 1;
+        cerr << "Reuse space " << insertPosition << endl;
+        cerr << "How many left " << freeHead << endl;
+    }
     
-    BinaryFile::Offset insertPosition = m_file.fileLength(); // use address at last
     
     if (m_size==0) {
         // push to empty list
@@ -79,8 +91,12 @@ bool DiskList::remove(const char* data)
             break;
         }
         else{
+            freeBlock[freeHead] = m_head;
+            m_file.write(m_head, 2*sizeof(m_head)+ freeHead*sizeof(m_head));
+            freeHead += 1;
+            
             m_head = temp.next; // delete first node
-            m_file.write(m_head,0); // move outside while loop
+            m_file.write(m_head,0); // move outside while loop?
             count += 1;
             m_size -= 1;
         }
@@ -104,6 +120,10 @@ bool DiskList::remove(const char* data)
         m_file.read(tempnext,next);
         
         if (strcompare(tempnext.value,data)) {
+            freeBlock[freeHead] = next;
+            m_file.write(next, 2*sizeof(m_head)+ freeHead*sizeof(m_head));
+            freeHead += 1;
+            
             temp.next = tempnext.next;
             m_file.write(temp,curr);
             m_size -= 1;
